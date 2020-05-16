@@ -8,6 +8,3 @@ export(generate_data)
 export(initials)
 export(measures_loglik)
 export(rdelta)
-importFrom("stats", "dgamma", "dlnorm", "dnorm", "dweibull", "optim",
-"pgamma", "plnorm", "pweibull", "rgamma", "rlnorm",
-"rmultinom", "rweibull", "uniroot")

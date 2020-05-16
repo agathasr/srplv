@@ -4,7 +4,7 @@ author: "Agatha Rodrigues"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{srplv}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -41,7 +41,7 @@ package. There is also an example to demonstrate what can be achieved and how to
 
 To install the package, you need first to install the devtools package and latter install the `srplv` package from Github. For that, the following code is required:
 ```{r echo=TRUE, eval=FALSE}
-devtools::install_github("agathasr/srplv") 
+devtools::install_github("agathasr/srplv",build_vignettes = TRUE) 
 ```
 
 ### Loading the package

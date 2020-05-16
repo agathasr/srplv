@@ -1,0 +1,361 @@
+---
+title: "Package srplv"
+author: "Agatha Rodrigues"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+The package `srplv` presents the gamma, Weibull, lognormal and log-logistic models for lifetime distribution of a component from superposed renewal processes by means of latent variables. Two approaches are available: the maximization of the likelihood function through EM algorithm and the Bayesian paradigm by obtaining MCMC samples from the posterior distribution.
+
+This document provides an introduction to the fundamental concepts underlying the srplv
+package. There is also an example to demonstrate what can be achieved and how to achieve it.
+
+## R libraries used
+
+* glue
+
+* mcmc
+
+* statmod
+
+* flexsurv
+
+* survival
+
+* MASS
+
+## First steps
+
+### Installing the package
+
+To install the package, you need first to install the devtools package and latter install the `srplv` package from Github. For that, the following code is required:
+```{r echo=TRUE, eval=FALSE}
+devtools::install_github("agathasr/srplv") 
+```
+
+### Loading the package
+To load the package and to use the functions of the `srplv` package, the following code can be considered:
+
+```{r echo=TRUE, eval=FALSE}
+library(srplv)
+```
+
+An alternative option is to use `srplv::` before each `srplv` function. This option was used throughout this document and can be exemplified in the following.
+
+## Converting the long layout dataset into the data list for srplv functions usage.
+
+Consider one has the dataset in a long layout, that is, the dataset is arranged in such a way that a single system’s information is stored in multiple rows. 
+
+
+The function to convert the long layout to the srplv layout is `data_to_srplv` function. The function arguments are: 
+
+* **data** - a data frame with three columns, recording the system ID, time and status.
+
+* **sys.col** - the index containing the system ID.
+
+* **time.col** - the index containing the event times and end-of-observation times.
+
+* **status.col** - the index containing failure status (if the item in the time.col is event time) or censoring status (if the item in the time.col is end-of-observation).
+
+* **n.comp** - the number of components.
+
+As an example, consider the long dataset in the table below (data_example), in which the system identification column is "SysID", the time information is "Time" column and the status column (if the time information is a end time or if it is a replacement time, that is, event time) is "Status" column. 
+
+```{r, echo=FALSE, results='asis'}
+syst <- c(1,1,2,3,3,3,3,4,4,4,4,5,5,6,6,7,7,7,8,8)
+tim <- c(4.321,6.100,6.163,4.732,	4.995,	5.483,	6.163,	3.837,	4.154,	4.721,	4.820,	6.045,6.116,	5.817,	6.091,	1.234,	3.643,	5.673,	2.242,6.421)
+sts <- c("Replacement","End","End",	"Replacement",	"Replacement",	"Replacement",	"End",	"Replacement",	"Replacement",	"Replacement",	"Replacement",	"Replacement",	"End",	"Replacement",	"End",	"Replacement",	"Replacement",	"End","Replacement",	"End")
+data_example <- data.frame(SysID=syst,Time=tim,Status=sts)
+knitr::kable(data_example)
+```
+
+The function to convert the long layout to the srplv layout presented as follow:
+
+```{r echo=TRUE, eval=TRUE}
+Data.srp <- srplv::data_to_srplv(data=data_example, sys.col="SysID" , time.col="Time",status.col="Status", n.comp=10)
+Data.srp
+```
+
+A list with the following components is returning (in the previous example, attributed to Data.srp object): 
+
+* **n** - the number of systems in the fleet.
+
+* **n.comp** - the number of components in the systems.
+
+* **r** - a vector containing the number of failures for each system in the fleet.
+
+* **time** - a list containing the failure time for each system.
+
+* **cens** - a vector that records the end-of-observation time for each system.
+
+
+## Likelihood function maximization via EM-Algorithm 
+The `EMalg` function calculates the maximum likelihood estimates obtained by EM algorithm when the chose distribution is Weibull, gamma, lognormal or log-logistic distribution.
+
+The function arguments are: 
+
+* **guess** - the initial values for the parameters. The default is (1,1).
+
+* **Data** - the data in the srplv format. See `data_to_srplv` function.
+
+* **distribution** - the chose distribution. The argument is *weibull* for the Weibull distribution, *gamma* for the gamma distribution,  *lnorm* for the lognormal distribution, *llogis* for the log-logistic. The default is the Weibull distribution.
+
+* **L** - the number of Monte Carlo simulation. For a declared value non-integer or non-positive, the default value of 1000 is considered.
+
+Lets fit the gamma model for the data_example dataset and then obtain the maximum likelihood estimates for the gamma parameters. For that, the following code line is required:
+
+```{r echo=TRUE, eval=FALSE}
+EM.fit <- srplv::EMalg(guess=c(2,2),Data=Data.srp,distribution='gamma',L=100)
+#> Iteration 1: Distribution=gamma; Parameters = 3.064;4.404; Spent = 0.077 min.
+#> Iteration 2: Distribution=gamma; Parameters = 2.993;4.568; Spent = 0.125 min.
+#> Iteration 3: Distribution=gamma; Parameters = 2.972;4.62; Spent = 0.178 min.
+#> Iteration 4: Distribution=gamma; Parameters = 3.003;4.544; Spent = 0.228 min.
+#> Iteration 5: Distribution=gamma; Parameters = 2.993;4.57; Spent = 0.28 min.
+#> Iteration 6: Distribution=gamma; Parameters = 3.039;4.461; Spent = 0.328 min.
+#> Iteration 7: Distribution=gamma; Parameters = 3.039;4.461; Spent = 0.377 min.
+```
+
+The stop criterion for EM algorithm convergence is if the difference between two consecutive iterations is less than 0.0001 for all parameters. In the example, the convergence criterion was reached at 7th iteration. 
+
+A list with the following objects is returning: 
+
+* **values** - the values of parameters in all EM algorithm iterations.
+```{r echo=TRUE, eval=FALSE}
+EM.fit$values
+#>         [,1]     [,2]
+#> [1,] 7.389056 7.389056
+#> [2,] 3.064058 4.403940
+#> [3,] 2.993121 4.568299
+#> [4,] 2.971911 4.619979
+#> [5,] 3.003297 4.544326
+#> [6,] 2.992722 4.569651
+#> [7,] 3.039357 4.460567
+#> [8,] 3.039357 4.460567
+```
+
+* **est.par** - the maximum likelihood estimates of the parameters.
+```{r echo=TRUE, eval=FALSE}
+EM.fit$est.par
+#> [1] 3.039357 4.460567
+```
+
+* **max.logLik** - the maximum likelihood value.
+```{r echo=TRUE, eval=FALSE}
+EM.fit$max.logLik
+#> [1] -52.16452
+```
+
+* **n.it** - the number of EM iterations.
+```{r echo=TRUE, eval=FALSE}
+EM.fit$n.it
+#> [1] 7
+```
+
+* **time** - the computational time to reach the EM algorithm convergence (in minutes).
+```{r echo=TRUE, eval=FALSE}
+EM.fit$time
+#> [1] 0.3768333
+```
+
+## Information criteria
+
+Information criteria based on maximized log-likelihood function value are calculated at `measures_loglik` function. The available measures are AIC (Akaike Information Criterion), AICc (corrected Akaike Information Criterion), BIC (Bayesian Information Criterion), HQIC (Hannan-Quinn Information Criterion) and CAIC (Consistent Akaike Information Criterion). 
+
+The function arguments are: 
+
+* **n** - number of systems.
+
+* **npar** - number of the parameters.
+
+* **loglik** - maximized log-likelihood function value returned in `EMalg`.
+
+For the data_example dataset, the following code line is required:
+```{r echo=TRUE, eval=FALSE}
+srplv::measures_loglik(n=Data.srp$n,npar=dim(EM.fit$values)[2],loglik=EM.fit$max.logLik)
+#> $loglik
+#> [1] -52.16452
+
+#> $aic
+#> [1] 108.329
+
+#> $aicc
+#> [1] 110.729
+
+#> $bic
+#> [1] 108.4879
+
+#> $hqic
+#> [1] 107.2574
+
+#> $caic
+#> [1] 110.4879
+```
+
+
+## Bayesian approach via Metropolis within Gibbs algorithm 
+
+The `MWG` function results in MCMC sample from the posterior distribution via Metropolis within Gibbs (MWG) algorithm for superposed renewal processes by means of latent variables.
+
+The function arguments are: 
+
+* **guess** - the vector of initial values for the parameters. The default is (1,1).
+
+* **Data** - data in the srplv format as `data_to_srplv`.
+
+* **distribution** - the chose distribution: weibull, gamma, lnorm, llogis.
+
+* **burn** - burn-in sample.
+
+* **jump** - jump sample.
+
+* **prior1** - hyperparameters for the prior distribution for parameter 1.
+
+* **prior2** - hyperparameters for the prior distribution for parameter 2.
+
+* **n.size** - number of MCMC sample. The default is 1000. 
+
+It is worth to mention that the prior distribution for positive parameter is gamma distribution shape (prior[1]) and scale (prior[2]) hyperparameters. For real valued parameter, the normal distribution with mean (prior[1]) and variance (prior[2]) is the prior distribution. 
+
+The gamma model for the data_example dataset is fit with the following code line:
+
+```{r echo=TRUE, eval=FALSE}
+MWG.fit <- srplv::MWG(guess=c(2,2),Data=Data.srp,distribution='gamma',burn=1000,jump=10,prior1=c(0.01,100),prior2=c(0.01,100),n.size=1000)
+#> Spent = 9.18 min.
+```
+
+A list with the following objects is returning: 
+
+* **post.values** - the sample from the posterior distribution for each parameter (column) with size *n.size* as the number of rows.
+```{r echo=TRUE, eval=FALSE}
+head(MWG.fit$post.values)
+#>       [,1]     [,2]
+#> [1,] 2.157493 8.952596
+#> [2,] 2.039880 9.963110
+#> [3,] 2.324389 7.977607
+#> [4,] 2.604957 4.401384
+#> [5,] 3.592978 3.294720
+#> [6,] 2.707446 4.691941
+```
+
+
+* **acceptance** - the acceptance rate.
+```{r echo=TRUE, eval=FALSE}
+MWG.fit$acceptance
+#> [1] 0.3
+```
+
+* **time** - the computational time (in minutes).
+```{r echo=TRUE, eval=FALSE}
+MWG.fit$time
+#> [1] 9.180167
+```
+
+* **matrix.cpo** - matrix with dimension *n.sys* by *n.size* containing Conditional Predictive Ordinate (CPO) values for *n.sys* systems and *n.size* posterior sample.
+```{r echo=TRUE, eval=FALSE}
+MWG.fit$matrix.cpo[ ,1:3]
+#>             [,1]         [,2]         [,3]
+#> [1,] 8.656342e-03 8.493485e-03 8.948202e-03
+#> [2,] 2.732837e-01 2.762851e-01 2.850228e-01
+#> [3,] 1.118835e-05 1.007889e-05 1.187189e-05
+#> [4,] 1.109106e-05 1.022638e-05 1.114655e-05
+#> [5,] 1.059522e-02 1.020563e-02 1.129010e-02
+#> [6,] 1.048301e-02 1.011231e-02 1.113670e-02
+#> [7,] 8.367800e-05 8.985619e-05 7.151653e-05
+#> [8,] 4.338222e-03 4.514841e-03 4.134560e-03
+```
+
+## Log pseudo marginal likelihood (LPML)
+
+The LPML (log pseudo marginal likelihood) measure is the sum of the logarithms of the conditional predictive ordinate (CPO) of all the observations, that is, $LPML = \sum_{i=1}^n\log\Big(CPO_i\Big)$, with $n$ the sample size, and the higher the LPML value is, the better the model fit.
+
+The function argument to calculate LPML is: 
+
+* **matrix.cpo** - matrix with dimension *n.sys* by *n.size* containing CPO values for *n.sys* systems (sample size) and *n.size* posterior sample. Result from `MWG` function. 
+
+```{r echo=TRUE, eval=FALSE}
+srplv::cpo_fc(MWG.fit$matrix.cpo)
+#>  [1] -56.07327
+```
+
+### Data generation of Superposed Renewal Processes
+
+The function `generate_data` generates srplv dataset. For that, the arguments are:
+
+* **n.sys** - the number of systems, that is, the sample size. 
+
+* **n.comp** - the number of sockets for each system.
+
+* **m.t** - the expected failure time of components.
+
+* **v.t** - the variance of failure time of components.
+
+* **m.c** - the expected failure time of censor (end-of-observation time).
+
+* **v.c** - the variance of failure time of censor (end-of-observation time).
+
+* **distribution** - the chose distribution: weibull, gamma, lnorm, llogis.
+
+* **s.seed** - the seed for data generation.
+
+As an example, lets generate a simulated dataset in the following:
+```{r echo=TRUE, eval=TRUE}
+data.sim <- srplv::generate_data(n.sys=10,n.comp=5,m.t=3,v.t=2,m.c=8,v.c=5,distribution='weibull',s.seed=1002)
+
+```
+
+Then the following list is returned:
+
+```{r echo=TRUE, eval=TRUE}
+data.sim 
+```
+
+* **n** - the number of systems in the fleet.
+```{r echo=TRUE, eval=TRUE}
+data.sim$n
+```
+
+* **n.comp** - the number of sockets in each system.
+```{r echo=TRUE, eval=TRUE}
+data.sim$n.comp
+```
+
+* **r** - a vector with a length n, recording the number of failures for each system.
+```{r echo=TRUE, eval=TRUE}
+data.sim$r
+```
+
+* **time** - a list that each vector records the failure times of each system.
+```{r echo=TRUE, eval=TRUE}
+data.sim$time
+```
+
+* **cens** - a vector with a length n, recording the end-of-observation time for each system.
+```{r echo=TRUE, eval=TRUE}
+data.sim$cens
+```
+
+* **par.t** - a vector with parameters of components failure times distribution.
+```{r echo=TRUE, eval=TRUE}
+data.sim$par.t
+```
+
+* **par.c** - a vector with parameters of censor distribution.
+```{r echo=TRUE, eval=TRUE}
+data.sim$par.c
+```
+
+* **delta.true** - a list that each vector records the socket index failure indicator of each system (latent variable that is not really observed in srp scenario).
+```{r echo=TRUE, eval=TRUE}
+data.sim$delta.true
+```

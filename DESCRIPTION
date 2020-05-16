@@ -1,0 +1,23 @@
+Package: srplv
+Title: Parametric models for estimating the lifetime distribution of a component from superposed renewal processes by means of latent variables.
+Version: 0.0.0.9000
+Authors@R: 
+    person("Agatha", "Rodrigues", email = "agatha.srodrigues@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-1112-8264"))
+Description: This package presents the gamma, Weibull, lognormal and log-logistic models for component lifetime distribution from superposed renewal processes by means of latent variables. Two approaches are available: the maximization of the likelihood function through EM algorithm and the Bayesian paradigm by obtaining MCMC samples from the posterior distribution.
+License: MIT + file LICENSE
+Imports:
+    glue, 
+    mcmc,
+    statmod,
+    flexsurv,
+    survival,
+    MASS
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.0.9000
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
